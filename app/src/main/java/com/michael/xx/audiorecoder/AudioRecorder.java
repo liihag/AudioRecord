@@ -4,6 +4,7 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.util.Log;
+import android.util.Pair;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -14,10 +15,10 @@ import java.util.TimerTask;
 
 public class AudioRecorder {
     private static final String TAG = "AudioRecorder";
-    private final static int AUDIO_INPUT = MediaRecorder.AudioSource.MIC;
-    private final static int AUDIO_SAMPLE_RATE = 8000;
-    private final static int AUDIO_CHANNEL = AudioFormat.CHANNEL_IN_MONO;
-    private final static int AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
+    private int audioInput = MediaRecorder.AudioSource.MIC;
+    private int audioSampleRate = 8000;
+    private int audioChannel = AudioFormat.CHANNEL_IN_MONO;
+    private int audioEncode = AudioFormat.ENCODING_PCM_16BIT;
 
     private int bufferSizeInBytes = 0;
     private AudioRecord audioRecord;
@@ -33,12 +34,10 @@ public class AudioRecorder {
     private AudioEncoder encoder;
 
     public AudioRecorder(CallBack callBack, AudioEncoder encoder) {
-        bufferSizeInBytes = AudioRecord.getMinBufferSize(AUDIO_SAMPLE_RATE,
-                AUDIO_CHANNEL, AUDIO_ENCODING);
         pcmFileName = AudioFileUtils.getPcmFileAbsolutePath(System.currentTimeMillis() + "");
         this.encoder = encoder;
 
-        encoder.init(AUDIO_SAMPLE_RATE, 16, 1);
+//        encoder.init(audioSampleRate, 16, 1);
         File file = new File(pcmFileName);
         if (file.exists()) {
             file.delete();
@@ -47,6 +46,23 @@ public class AudioRecorder {
         this.callBack = callBack;
     }
 
+
+    public void setAudioInput(int audioInput) {
+        this.audioInput = audioInput;
+    }
+
+    public void setAudioSampleRate(int audioSampleRate) {
+        this.audioSampleRate = audioSampleRate;
+    }
+
+    public void setAudioChannel(int audioChannel) {
+        this.audioChannel = audioChannel;
+    }
+
+
+    public void setEncoder(AudioEncoder encoder) {
+        this.encoder = encoder;
+    }
 
     private void startTimer() {
         if (timer == null)
@@ -81,8 +97,9 @@ public class AudioRecorder {
 
     public void startRecord() {
 
-        audioRecord = new AudioRecord(AUDIO_INPUT, AUDIO_SAMPLE_RATE, AUDIO_CHANNEL, AUDIO_ENCODING, bufferSizeInBytes);
-
+        bufferSizeInBytes = AudioRecord.getMinBufferSize(audioSampleRate,
+                audioChannel, audioEncode);
+        audioRecord = new AudioRecord(audioInput, audioSampleRate, audioChannel, audioEncode, bufferSizeInBytes);
         if (status == Status.STATUS_NO_READY) {
             throw new IllegalStateException("not init");
         }
@@ -112,21 +129,20 @@ public class AudioRecorder {
     }
 
     private void makeDestFile() {
+        if (encoder == null)
+            return;
         new Thread() {
             @Override
             public void run() {
+                encoder.init(audioSampleRate, audioSampleRate * 16 * audioRecord.getChannelCount(), audioRecord.getChannelCount());
                 encoder.encode(pcmFileName);
                 releaseRecorder();
             }
         }.run();
     }
 
-    /**
-     * 释放资源
-     */
     public void release() {
         Log.d("AudioRecorder", "===release===");
-        //假如有暂停录音
         stopRecorder();
         releaseRecorder();
         status = Status.STATUS_READY;
@@ -152,12 +168,14 @@ public class AudioRecorder {
     }
 
     public void clearFiles() {
-        File file = new File(encoder.getDestFile());
-        if (file.exists())
-            file.delete();
+        if (encoder != null) {
+            File file = new File(encoder.getDestFile());
+            if (file.exists())
+                file.delete();
+        }
         File pcmfile = new File(pcmFileName);
-        if (file.exists())
-            file.delete();
+        if (pcmfile.exists())
+            pcmfile.delete();
     }
 
     private void recordToFile() {
@@ -215,7 +233,7 @@ public class AudioRecorder {
 
 
     public String getVoiceFilePath() {
-        return encoder.getDestFile();
+        return encoder == null ? pcmFileName : encoder.getDestFile();
     }
 
     public enum Status {

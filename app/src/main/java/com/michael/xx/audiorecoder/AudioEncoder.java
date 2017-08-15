@@ -1,5 +1,11 @@
 package com.michael.xx.audiorecoder;
 
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
+import android.support.annotation.NonNull;
+
+import java.io.IOException;
+
 /**
  * Created by michael_xu on 2017/8/11.
  */
@@ -20,6 +26,12 @@ public abstract class AudioEncoder {
         return destinationFile;
     }
 
+    @NonNull
+    protected MediaFormat getMediaFormat(String sourceFile) throws IOException {
+        MediaExtractor mex = new MediaExtractor();
+        mex.setDataSource(sourceFile);
+        return mex.getTrackFormat(0);
+    }
     public abstract void encode(String sourceFile);
 
 }

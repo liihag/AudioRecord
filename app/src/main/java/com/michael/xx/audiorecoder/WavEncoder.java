@@ -1,5 +1,6 @@
 package com.michael.xx.audiorecoder;
 
+import android.media.MediaFormat;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -36,9 +37,9 @@ public class WavEncoder extends AudioEncoder {
         header.fileLength = TOTAL_SIZE + (44 - 8);
         header.FmtHdrLeth = 16;
         header.BitsPerSample = 16;
-        header.Channels = 1;
+        header.Channels = (short) CHANNEL_COUNT;
         header.FormatTag = 0x0001;
-        header.SamplesPerSec = 8000;
+        header.SamplesPerSec = SAMPLE_RATE;
         header.BlockAlign = (short) (header.Channels * header.BitsPerSample / 8);
         header.AvgBytesPerSec = header.BlockAlign * header.SamplesPerSec;
         header.DataHdrLeth = TOTAL_SIZE;
