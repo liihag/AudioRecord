@@ -55,7 +55,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             public void volumn(int volumn) {
 
             }
-        }, new AmrEncoder());
+        }, new WavEncoder());
     }
 
     @Override

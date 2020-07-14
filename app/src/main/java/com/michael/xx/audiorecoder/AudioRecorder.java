@@ -3,6 +3,7 @@ package com.michael.xx.audiorecoder;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.media.audiofx.AcousticEchoCanceler;
 import android.util.Log;
 import android.util.Pair;
 
@@ -15,10 +16,17 @@ import java.util.TimerTask;
 
 public class AudioRecorder {
     private static final String TAG = "AudioRecorder";
-    private int audioInput = MediaRecorder.AudioSource.MIC;
-    private int audioSampleRate = 8000;
-    private int audioChannel = AudioFormat.CHANNEL_IN_MONO;
+    private int audioInput = MediaRecorder.AudioSource.VOICE_COMMUNICATION;
+    private int audioSampleRate = 44100 ;
+    private int audioChannel = AudioFormat.CHANNEL_IN_STEREO;
+//    private int audioChannel = 0xfc;
+//    private int audioChannel = 0x3c;
+//        private int audioChannel = AudioFormat.CHANNEL_IN_STEREO;
+    private boolean CHANNEL_INDEX_MASK=false ;
     private int audioEncode = AudioFormat.ENCODING_PCM_16BIT;
+    private boolean AECenable=false;
+//    private boolean AECenable=true;
+    private AcousticEchoCanceler acousticEchoCanceler;
 
     private int bufferSizeInBytes = 0;
     private AudioRecord audioRecord;
@@ -37,7 +45,7 @@ public class AudioRecorder {
         pcmFileName = AudioFileUtils.getPcmFileAbsolutePath(System.currentTimeMillis() + "");
         this.encoder = encoder;
 
-//        encoder.init(audioSampleRate, 16, 1);
+//        encoder.init(audioSampleRate, 16, 1)·;
         File file = new File(pcmFileName);
         if (file.exists()) {
             file.delete();
@@ -96,16 +104,36 @@ public class AudioRecorder {
     }
 
     public void startRecord() {
+        Log.d("AudioRecorder","start getMinBufferSize with parm audioSampleRate:"+audioSampleRate+"audioChannel:"+audioChannel);
 
         bufferSizeInBytes = AudioRecord.getMinBufferSize(audioSampleRate,
                 audioChannel, audioEncode);
-        audioRecord = new AudioRecord(audioInput, audioSampleRate, audioChannel, audioEncode, bufferSizeInBytes);
+        Log.d("AudioRecorder","getMinBufferSize is "+bufferSizeInBytes);
+        if (CHANNEL_INDEX_MASK&&android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            Log.e("AudioRecorder", "use 4 channel");
+            final AudioFormat audioFormat = new AudioFormat.Builder()
+                    .setEncoding(audioEncode)
+                    .setSampleRate(audioSampleRate)
+                    .setChannelIndexMask(audioChannel /* 4 channels, 0..3 */)
+                    .build();
+
+            audioRecord = new AudioRecord.Builder()
+                    .setAudioFormat(audioFormat)
+                    .setAudioSource(audioInput)
+                    .setBufferSizeInBytes(bufferSizeInBytes)
+                    .build();
+        }
+        else
+            audioRecord = new AudioRecord(audioInput, audioSampleRate, audioChannel, audioEncode, bufferSizeInBytes);
         if (status == Status.STATUS_NO_READY) {
             throw new IllegalStateException("not init");
         }
         if (status == Status.STATUS_START) {
             throw new IllegalStateException("is recording ");
         }
+        if(AECenable)
+            initAEC();
+
         Log.d("AudioRecorder", "===startRecord===" + audioRecord.getState());
         audioRecord.startRecording();
 
@@ -187,6 +215,7 @@ public class AudioRecorder {
         } catch (FileNotFoundException e) {
             Log.e("AudioRecorder", e.getMessage());
         }
+        Log.i(TAG, "start writeDataTOFile: "+pcmFileName);
         status = Status.STATUS_START;
         while (status == Status.STATUS_START && audioRecord != null) {
             readsize = audioRecord.read(audiodata, 0, bufferSizeInBytes);
@@ -199,19 +228,25 @@ public class AudioRecorder {
                         sum += Math.abs(audiodata[i]);
                     }
 
-                    if (readsize > 0) {
-                        int raw = sum / readsize;
-                        lastVolumn = raw > 32 ? raw - 32 : 0;
-                        Log.i(TAG, "writeDataTOFile: volumn -- " + raw + " / lastvolumn -- " + lastVolumn);
-                    }
+//                    if (readsize > 0) {
+//                        int raw = sum / readsize;
+//                        lastVolumn = raw > 32 ? raw - 32 : 0;
+//                        Log.i(TAG, "writeDataTOFile: volumn -- " + raw + " / lastvolumn -- " + lastVolumn);
+//                    }
 
 
-                    if (readsize > 0 && readsize <= audiodata.length)
+                    if (readsize > 0 && readsize <= audiodata.length) {
                         fos.write(audiodata, 0, readsize);
+                        Log.i(TAG, "audiodata.length is"+bufferSizeInBytes+",and readsize is"+readsize);
+                    }
+                    else
+                        Log.i(TAG, "audiodata.length is"+bufferSizeInBytes+",but readsize is"+readsize);
                 } catch (IOException e) {
                     Log.e("AudioRecorder", e.getMessage());
                 }
+
             }
+
         }
         try {
             if (fos != null) {
@@ -248,6 +283,23 @@ public class AudioRecorder {
         public void recordProgress(int progress);
 
         public void volumn(int volumn);
+    }
+
+
+    private void initAEC() {
+        if (AcousticEchoCanceler.isAvailable()) {
+            if (acousticEchoCanceler == null) {
+                acousticEchoCanceler = AcousticEchoCanceler.create(audioRecord.getAudioSessionId());
+                Log.d(TAG, "initAEC: ---->" + acousticEchoCanceler + "t" + audioRecord.getAudioSessionId());
+                if (acousticEchoCanceler == null) {
+                    Log.e(TAG, "initAEC: ----->AcousticEchoCanceler create fail.");
+                } else {
+                    acousticEchoCanceler.setEnabled(true);
+                      ;
+                }
+
+            }
+        }
     }
 
 }

@@ -3,6 +3,7 @@ package com.michael.xx.audiorecoder;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
+import android.util.Log;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -20,6 +21,8 @@ public class AmrEncoder extends AudioEncoder {
     @Override
     public void init(int SAMPLE_RATE, int BIT_RATE, int CHANNEL_COUNT) {
         super.init(SAMPLE_RATE, BIT_RATE, CHANNEL_COUNT);
+        Log.i("AmrEncoder","init parm;SAMPLE_RATE:"+SAMPLE_RATE+"BIT_RATE:"+BIT_RATE+"CHANNEL_COUNT:"+CHANNEL_COUNT);
+
         destinationFile = AudioFileUtils.getAmrFileAbsolutePath(System.currentTimeMillis() + "");
     }
 

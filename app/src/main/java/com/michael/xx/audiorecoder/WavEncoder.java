@@ -20,6 +20,8 @@ public class WavEncoder extends AudioEncoder {
     @Override
     public void init(int SAMPLE_RATE, int BIT_RATE, int CHANNEL_COUNT) {
         super.init(SAMPLE_RATE, BIT_RATE, CHANNEL_COUNT);
+        Log.i("WavEncoder","init parm;SAMPLE_RATE:"+SAMPLE_RATE+",BIT_RATE:"
+                +BIT_RATE+",CHANNEL_COUNT:"+CHANNEL_COUNT);
         destinationFile = AudioFileUtils.getWavFileAbsolutePath(System.currentTimeMillis() + "");
     }
 
